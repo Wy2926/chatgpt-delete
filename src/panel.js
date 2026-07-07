@@ -250,7 +250,7 @@
       });
 
       this._setupLasso();
-      document.documentElement.appendChild(this.host);
+      (document.body || document.documentElement).appendChild(this.host);
     }
 
     /* ---------- 面板开关 / 最小化 ---------- */
