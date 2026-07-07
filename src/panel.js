@@ -204,10 +204,8 @@
       this.tab = tab;
       this.overlay.querySelectorAll('.tab').forEach((t) =>
         t.classList.toggle('active', t.dataset.tab === tab));
-      const del = this.$('[data-act=delete]');
-      const arc = this.$('[data-act=archive]');
+      const arc = this.$('[data-act=archive], [data-act=unarchive]');
       arc.textContent = tab === 'archived' ? '取消归档所选' : '归档所选';
-      del.style.display = '';
       arc.dataset.act = tab === 'archived' ? 'unarchive' : 'archive';
       this.refresh();
     }
