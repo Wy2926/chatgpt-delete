@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <style>
+    body { font-family: -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif; width: 280px; margin: 0; padding: 16px; color: #222; }
+    h1 { font-size: 15px; margin: 0 0 10px; }
+    p { font-size: 13px; color: #666; margin: 0 0 12px; line-height: 1.6; }
+    button { width: 100%; padding: 9px; border: none; border-radius: 8px; background: #10a37f; color: #fff; font-size: 14px; cursor: pointer; }
+    button:hover { background: #0d8a6c; }
+    .tip { font-size: 12px; color: #999; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <h1>ChatGPT 批量管理器</h1>
+  <p>批量删除 / 归档 ChatGPT 会话。支持多选、Shift 区间选、拖动框选，自动处理接口限速并支持失败重试。</p>
+  <button id="open">打开 ChatGPT 并使用</button>
+  <p class="tip">在 chatgpt.com 页面右下角点击 🗂 悬浮按钮即可打开管理面板。</p>
+  <script src="popup.js"></script>
+</body>
+</html>
