@@ -3,7 +3,10 @@
   'use strict';
   if (window.__cgptBulkMounted) return;
   window.__cgptBulkMounted = true;
-  const mount = () => new window.CGPTBulk.Panel();
+  const mount = () => {
+    new window.CGPTBulk.Panel();
+    new window.CGPTBulk.SidebarSelect();
+  };
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', mount);
   } else {

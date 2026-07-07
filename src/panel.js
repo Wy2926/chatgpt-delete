@@ -1,24 +1,29 @@
 /**
  * 管理面板 UI（Shadow DOM 隔离，不影响 ChatGPT 页面自身样式与操作）。
  * 功能：会话列表、复选框多选、Shift 区间选、鼠标拖动框选、搜索、
- *       批量删除 / 归档 / 取消归档、进度反馈、失败重试。
+ *       批量删除 / 归档 / 取消归档、进度反馈、失败重试、
+ *       运行中可最小化为迷你进度胶囊（后台继续执行）。
  */
 (function () {
   'use strict';
 
   const B = (window.CGPTBulk = window.CGPTBulk || {});
+  const I = B.ICONS;
 
   const CSS = `
     :host { all: initial; }
     * { box-sizing: border-box; font-family: -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif; }
+    svg { display: block; }
 
     .fab {
       position: fixed; right: 20px; bottom: 90px; z-index: 2147483000;
       width: 48px; height: 48px; border-radius: 50%; border: none; cursor: pointer;
-      background: #10a37f; color: #fff; font-size: 22px; line-height: 1;
+      background: #10a37f; color: #fff; font-size: 24px;
+      display: flex; align-items: center; justify-content: center;
       box-shadow: 0 4px 12px rgba(0,0,0,.25); transition: transform .15s;
     }
     .fab:hover { transform: scale(1.08); }
+    .fab.hidden { display: none; }
 
     .overlay {
       position: fixed; inset: 0; z-index: 2147483001;
@@ -28,11 +33,13 @@
       width: min(680px, 92vw); height: min(78vh, 720px);
       background: #fff; border-radius: 14px; display: flex; flex-direction: column;
       box-shadow: 0 12px 40px rgba(0,0,0,.35); overflow: hidden; color: #222;
+      position: relative;
     }
     .hd { display: flex; align-items: center; gap: 10px; padding: 14px 18px; border-bottom: 1px solid #eee; }
-    .hd h2 { margin: 0; font-size: 16px; flex: 1; }
-    .close { border: none; background: none; font-size: 20px; cursor: pointer; color: #666; padding: 4px 8px; }
-    .close:hover { color: #000; }
+    .hd h2 { margin: 0; font-size: 16px; flex: 1; display: flex; align-items: center; gap: 8px; }
+    .hd h2 .logo { color: #10a37f; font-size: 20px; }
+    .iconbtn { border: none; background: none; font-size: 17px; cursor: pointer; color: #666; padding: 5px 7px; border-radius: 6px; }
+    .iconbtn:hover { color: #000; background: #f2f2f2; }
 
     .tabs { display: flex; gap: 4px; }
     .tab { border: none; background: #f1f1f1; padding: 6px 14px; border-radius: 8px; cursor: pointer; font-size: 13px; color: #444; }
@@ -41,7 +48,8 @@
     .toolbar { display: flex; gap: 8px; padding: 10px 18px; border-bottom: 1px solid #eee; align-items: center; flex-wrap: wrap; }
     .search { flex: 1; min-width: 160px; padding: 7px 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 13px; outline: none; }
     .search:focus { border-color: #10a37f; }
-    .btn { border: 1px solid #ddd; background: #fff; padding: 7px 12px; border-radius: 8px; cursor: pointer; font-size: 13px; color: #333; white-space: nowrap; }
+    .btn { border: 1px solid #ddd; background: #fff; padding: 7px 12px; border-radius: 8px; cursor: pointer; font-size: 13px; color: #333; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
+    .btn svg { font-size: 14px; }
     .btn:hover:not(:disabled) { background: #f5f5f5; }
     .btn:disabled { opacity: .45; cursor: not-allowed; }
     .btn.danger { background: #e5484d; border-color: #e5484d; color: #fff; }
@@ -86,6 +94,32 @@
     .confirm h3 { margin: 0 0 8px; font-size: 15px; }
     .confirm p { margin: 0 0 16px; font-size: 13px; color: #666; line-height: 1.5; }
     .confirm .acts { display: flex; gap: 8px; justify-content: flex-end; }
+
+    /* 迷你进度胶囊 */
+    .pill {
+      position: fixed; right: 20px; bottom: 90px; z-index: 2147483002;
+      display: none; align-items: center; gap: 8px;
+      background: #fff; color: #222; border: 1px solid #e3e3e3; border-radius: 999px;
+      padding: 8px 14px 8px 10px; font-size: 13px; cursor: pointer;
+      box-shadow: 0 6px 20px rgba(0,0,0,.22); user-select: none;
+    }
+    .pill.show { display: flex; }
+    .pill .ring { position: relative; width: 26px; height: 26px; border-radius: 50%; flex: none;
+      background: conic-gradient(#10a37f calc(var(--p, 0) * 1%), #e8e8e8 0); }
+    .pill .ring::after { content: ''; position: absolute; inset: 4px; border-radius: 50%; background: #fff; }
+    .pill .ring .ic { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #10a37f; z-index: 1; }
+    .pill .txt { white-space: nowrap; }
+    .pill .txt small { display: block; color: #999; font-size: 11px; line-height: 1.2; }
+    .pill .pctl { display: none; gap: 2px; }
+    .pill:hover .pctl { display: flex; }
+    .pill .pctl button { border: none; background: #f2f2f2; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; color: #555; font-size: 12px; display: flex; align-items: center; justify-content: center; }
+    .pill .pctl button:hover { background: #e5e5e5; color: #000; }
+    .pill.done-ok .ring { background: #10a37f; }
+    .pill.done-ok .ring .ic { color: #fff; z-index: 1; }
+    .pill.done-ok .ring::after { display: none; }
+    .pill.done-warn .ring { background: #f5a623; }
+    .pill.done-warn .ring .ic { color: #fff; }
+    .pill.done-warn .ring::after { display: none; }
   `;
 
   const fmtTime = (iso) => {
@@ -107,6 +141,7 @@
       this.failedIds = [];            // 上次批量操作失败的 id
       this.lastAction = null;         // 'delete' | 'archive' | 'unarchive'
       this.running = false;
+      this.minimized = false;
       this.queue = null;
       this.lastClickedIndex = -1;
       this.filter = '';
@@ -124,7 +159,7 @@
       this.fab = document.createElement('button');
       this.fab.className = 'fab';
       this.fab.title = '批量管理 ChatGPT 会话';
-      this.fab.textContent = '🗂';
+      this.fab.innerHTML = I.logo;
       this.fab.addEventListener('click', () => this.open());
       root.appendChild(this.fab);
 
@@ -134,35 +169,55 @@
       this.overlay.innerHTML = `
         <div class="panel">
           <div class="hd">
-            <h2>会话批量管理</h2>
+            <h2><span class="logo">${I.logo}</span>会话批量管理</h2>
             <div class="tabs">
               <button class="tab active" data-tab="active">会话</button>
               <button class="tab" data-tab="archived">已归档</button>
             </div>
-            <button class="close" title="关闭">✕</button>
+            <button class="iconbtn min" title="最小化">${I.minimize}</button>
+            <button class="iconbtn close" title="关闭">${I.close}</button>
           </div>
           <div class="toolbar">
             <input class="search" placeholder="搜索会话标题…" />
-            <button class="btn" data-act="refresh">刷新</button>
+            <button class="btn" data-act="refresh">${I.refresh}刷新</button>
             <button class="btn" data-act="selectAll">全选</button>
             <button class="btn" data-act="invert">反选</button>
             <button class="btn" data-act="clear">清除选择</button>
           </div>
-          <div class="hint">点击选择 / 取消；Shift+点击区间选择；在空白处按住鼠标拖动可框选。</div>
+          <div class="hint">点击选择 / 取消；Shift+点击区间选择；在空白处按住鼠标拖动可框选。运行中可最小化，操作在后台继续。</div>
           <div class="list"></div>
           <div class="ft">
             <div class="progress"><div></div></div>
             <div class="ft-row">
               <span class="status">加载中…</span>
-              <button class="btn" data-act="retryFailed" style="display:none">重试失败项</button>
-              <button class="btn" data-act="pause" style="display:none">暂停</button>
-              <button class="btn" data-act="cancel" style="display:none">取消</button>
-              <button class="btn primary" data-act="archive">归档所选</button>
-              <button class="btn danger" data-act="delete">删除所选</button>
+              <button class="btn" data-act="retryFailed" style="display:none">${I.retry}重试失败项</button>
+              <button class="btn" data-act="pause" style="display:none">${I.pause}暂停</button>
+              <button class="btn" data-act="cancel" style="display:none">${I.stop}取消</button>
+              <button class="btn primary" data-act="archive">${I.archive}归档所选</button>
+              <button class="btn danger" data-act="delete">${I.trash}删除所选</button>
             </div>
           </div>
         </div>`;
       root.appendChild(this.overlay);
+
+      // 迷你进度胶囊
+      this.pill = document.createElement('div');
+      this.pill.className = 'pill';
+      this.pill.title = '点击恢复面板';
+      this.pill.innerHTML = `
+        <div class="ring"><span class="ic">${I.logo}</span></div>
+        <div class="txt"><span class="t1">处理中…</span><small class="t2"></small></div>
+        <div class="pctl">
+          <button class="p-pause" title="暂停/继续">${I.pause}</button>
+          <button class="p-cancel" title="取消">${I.stop}</button>
+        </div>`;
+      this.pill.addEventListener('click', (e) => {
+        if (e.target.closest('.pctl')) return;
+        this.restore();
+      });
+      this.pill.querySelector('.p-pause').addEventListener('click', () => this._act_pause());
+      this.pill.querySelector('.p-cancel').addEventListener('click', () => this._act_cancel());
+      root.appendChild(this.pill);
 
       this.$ = (sel) => this.overlay.querySelector(sel);
       this.listEl = this.$('.list');
@@ -171,9 +226,16 @@
       this.progressBar = this.$('.progress > div');
 
       this.overlay.addEventListener('click', (e) => {
-        if (e.target === this.overlay && !this.running) this.close();
+        if (e.target === this.overlay) {
+          if (this.running) this.minimize();
+          else this.close();
+        }
       });
-      this.$('.close').addEventListener('click', () => { if (!this.running) this.close(); });
+      this.$('.close').addEventListener('click', () => {
+        if (this.running) this.minimize();
+        else this.close();
+      });
+      this.$('.min').addEventListener('click', () => this.minimize());
       this.$('.search').addEventListener('input', (e) => {
         this.filter = e.target.value.trim().toLowerCase();
         this.renderList();
@@ -182,7 +244,8 @@
         t.addEventListener('click', () => { if (!this.running) this.switchTab(t.dataset.tab); });
       });
       this.overlay.addEventListener('click', (e) => {
-        const act = e.target.dataset && e.target.dataset.act;
+        const btn = e.target.closest && e.target.closest('[data-act]');
+        const act = btn && btn.dataset.act;
         if (act && this[`_act_${act}`]) this[`_act_${act}`]();
       });
 
@@ -190,14 +253,71 @@
       document.documentElement.appendChild(this.host);
     }
 
-    /* ---------- 面板开关 / 数据加载 ---------- */
+    /* ---------- 面板开关 / 最小化 ---------- */
 
     open() {
+      if (this.minimized) { this.restore(); return; }
       this.overlay.style.display = 'flex';
       this.refresh();
     }
 
-    close() { this.overlay.style.display = 'none'; }
+    close() {
+      this.overlay.style.display = 'none';
+      this._hidePill();
+    }
+
+    minimize() {
+      this.minimized = true;
+      this.overlay.style.display = 'none';
+      if (this.running) {
+        this._showPill();
+      } else {
+        this.minimized = false;
+        this._hidePill();
+      }
+    }
+
+    restore() {
+      this.minimized = false;
+      this._hidePill();
+      this.overlay.style.display = 'flex';
+    }
+
+    _showPill() {
+      this.fab.classList.add('hidden');
+      this.pill.classList.remove('done-ok', 'done-warn');
+      this.pill.classList.add('show');
+    }
+
+    _hidePill() {
+      this.pill.classList.remove('show', 'done-ok', 'done-warn');
+      this.fab.classList.remove('hidden');
+    }
+
+    _updatePill(finished, total, note) {
+      if (!this.pill.classList.contains('show')) return;
+      const pct = total > 0 ? Math.round((finished / total) * 100) : 0;
+      this.pill.querySelector('.ring').style.setProperty('--p', pct);
+      this.pill.querySelector('.t1').textContent = `${finished}/${total}`;
+      this.pill.querySelector('.t2').textContent = note || '';
+    }
+
+    _finishPill(okCount, failCount) {
+      if (!this.pill.classList.contains('show')) return;
+      const ring = this.pill.querySelector('.ring');
+      ring.style.setProperty('--p', 100);
+      if (failCount > 0) {
+        this.pill.classList.add('done-warn');
+        ring.querySelector('.ic').innerHTML = I.warn;
+        this.pill.querySelector('.t1').textContent = `完成 ${okCount}，失败 ${failCount}`;
+        this.pill.querySelector('.t2').textContent = '点击查看详情并重试';
+      } else {
+        this.pill.classList.add('done-ok');
+        ring.querySelector('.ic').innerHTML = I.check;
+        this.pill.querySelector('.t1').textContent = `全部完成（${okCount}）`;
+        this.pill.querySelector('.t2').textContent = '点击查看';
+      }
+    }
 
     switchTab(tab) {
       if (tab === this.tab) return;
@@ -205,7 +325,7 @@
       this.overlay.querySelectorAll('.tab').forEach((t) =>
         t.classList.toggle('active', t.dataset.tab === tab));
       const arc = this.$('[data-act=archive], [data-act=unarchive]');
-      arc.textContent = tab === 'archived' ? '取消归档所选' : '归档所选';
+      arc.innerHTML = tab === 'archived' ? `${I.unarchive}取消归档所选` : `${I.archive}归档所选`;
       arc.dataset.act = tab === 'archived' ? 'unarchive' : 'archive';
       this.refresh();
     }
@@ -312,7 +432,6 @@
 
       this.listEl.addEventListener('mousedown', (e) => {
         if (this.running || e.button !== 0) return;
-        // 在行上按下由点击处理；只有按在列表空白处或想拖动时启动框选
         start = { x: e.clientX, y: e.clientY };
         addMode = !e.altKey;
         lassoEl = null;
@@ -339,7 +458,6 @@
           width: `${x2 - x1}px`,
           height: `${y2 - y1}px`,
         });
-        // 实时高亮命中的行
         this.listEl.querySelectorAll('.row').forEach((row) => {
           const r = rectOf(row);
           const hit = !(r.right < x1 || r.left > x2 || r.bottom < y1 || r.top > y2);
@@ -366,7 +484,6 @@
           lassoEl.remove();
           this.renderList();
           this._updateCount();
-          // 阻止随后的 click 误触发行点击
           const stopClick = (ev) => { ev.stopPropagation(); };
           this.listEl.addEventListener('click', stopClick, { capture: true, once: true });
         }
@@ -409,12 +526,15 @@
     _act_pause() {
       if (!this.queue) return;
       const btn = this.$('[data-act=pause]');
+      const pbtn = this.pill.querySelector('.p-pause');
       if (this.queue.paused) {
         this.queue.resume();
-        btn.textContent = '暂停';
+        btn.innerHTML = `${I.pause}暂停`;
+        pbtn.innerHTML = I.pause;
       } else {
         this.queue.pause();
-        btn.textContent = '继续';
+        btn.innerHTML = `${I.play}继续`;
+        pbtn.innerHTML = I.play;
       }
     }
 
@@ -446,7 +566,7 @@
       mask.innerHTML = `
         <div class="confirm">
           <h3>确认${verbs[action]}</h3>
-          <p>将对 <b>${n}</b> 个会话执行「${verbs[action]}」。${extra}</p>
+          <p>将对 <b>${n}</b> 个会话执行「${verbs[action]}」。${extra}操作会在后台执行，期间可最小化本面板。</p>
           <div class="acts">
             <button class="btn" data-c="no">取消</button>
             <button class="btn ${action === 'delete' ? 'danger' : 'primary'}" data-c="yes">确认${verbs[action]}</button>
@@ -478,9 +598,10 @@
 
       const total = ids.length;
       let finished = 0;
-      const tick = () => {
+      const tick = (note) => {
         this.progressBar.style.width = `${Math.round((finished / total) * 100)}%`;
         this.setStatus(`${verbs[action]}中… ${finished}/${total}`);
+        this._updatePill(finished, total, note || `${verbs[action]}中`);
       };
       tick();
 
@@ -513,7 +634,9 @@
             msg: `${Math.ceil(waitMs / 1000)}s 后重试`,
           });
           this._patchRowStatus(t.id);
+          const note = `限速中，${Math.ceil(waitMs / 1000)}s 后重试`;
           this.setStatus(`遇到限速，${Math.ceil(waitMs / 1000)} 秒后自动重试… (${finished}/${total})`);
+          this._updatePill(finished, total, note);
         },
       });
 
@@ -532,11 +655,16 @@
         this.setStatus(`全部${verbs[action]}成功（共 ${result.done.length} 个）`);
       }
 
+      if (this.minimized) {
+        this._finishPill(result.done.length, result.failed.length);
+        this.minimized = false; // 下次点击胶囊恢复面板
+      }
+
       // 成功的项从列表中移除
       const doneSet = new Set(result.done);
       this.items = this.items.filter((it) => !doneSet.has(it.id));
       this.renderList();
-      if (result.done.length > 0) this._notifySidebarRefresh();
+      if (result.done.length > 0 && B.sidebarSync) B.sidebarSync(result.done, action);
     }
 
     _patchRowStatus(id) {
@@ -556,7 +684,8 @@
 
     _setRunningUi(running) {
       this.$('[data-act=pause]').style.display = running ? '' : 'none';
-      this.$('[data-act=pause]').textContent = '暂停';
+      this.$('[data-act=pause]').innerHTML = `${I.pause}暂停`;
+      this.pill.querySelector('.p-pause').innerHTML = I.pause;
       this.$('[data-act=cancel]').style.display = running ? '' : 'none';
       this.$('[data-act=refresh]').disabled = running;
       this.$('[data-act=selectAll]').disabled = running;
@@ -565,12 +694,6 @@
       this.progressEl.classList.toggle('show', running);
       if (!running) this.progressBar.style.width = '0';
       this._updateActionButtons();
-    }
-
-    /** 让 ChatGPT 自己的侧边栏刷新（简单方式：软刷新页面路由不可行，提示用户） */
-    _notifySidebarRefresh() {
-      // ChatGPT 侧边栏由其内部状态管理，无法直接触发刷新；
-      // 面板内数据已即时更新，页面侧边栏在下次导航/刷新后同步。
     }
   }
 
