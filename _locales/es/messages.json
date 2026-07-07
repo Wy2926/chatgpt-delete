@@ -1,0 +1,8 @@
+{
+  "appName": {
+    "message": "Gestor masivo de ChatGPT"
+  },
+  "appDesc": {
+    "message": "Elimina / archiva conversaciones de ChatGPT en masa, con selección múltiple, selección por caja, manejo de límites de tasa y reintentos"
+  }
+}

@@ -6,6 +6,7 @@
   'use strict';
 
   const BASE = location.origin;
+  const t = (k, p) => (window.CGPTBulk && window.CGPTBulk.t ? window.CGPTBulk.t(k, p) : k);
 
   let cachedToken = null;
   let tokenExpiry = 0;
@@ -23,10 +24,10 @@
     const now = Date.now();
     if (!force && cachedToken && now < tokenExpiry) return cachedToken;
     const res = await fetch(`${BASE}/api/auth/session`, { credentials: 'include' });
-    if (!res.ok) throw new ApiError(`获取登录状态失败 (HTTP ${res.status})`, res.status);
+    if (!res.ok) throw new ApiError(t('errSession', { status: res.status }), res.status);
     const data = await res.json();
     if (!data || !data.accessToken) {
-      throw new ApiError('未登录 ChatGPT，请先登录后重试', 401);
+      throw new ApiError(t('errNotLoggedIn'), 401);
     }
     cachedToken = data.accessToken;
     tokenExpiry = now + 10 * 60 * 1000;
@@ -55,17 +56,17 @@
     });
     if (res.status === 401) {
       cachedToken = null;
-      throw new ApiError('登录已过期，请刷新页面重新登录', 401);
+      throw new ApiError(t('errExpired'), 401);
     }
     if (res.status === 429) {
-      throw new ApiError('请求过于频繁（接口限速）', 429, parseRetryAfter(res));
+      throw new ApiError(t('errRateLimited'), 429, parseRetryAfter(res));
     }
     if (!res.ok) {
       let detail = '';
       try {
         detail = (await res.json()).detail || '';
       } catch (_) { /* ignore */ }
-      throw new ApiError(`请求失败 (HTTP ${res.status}) ${detail}`.trim(), res.status);
+      throw new ApiError(t('errRequest', { status: res.status, detail }).trim(), res.status);
     }
     if (res.status === 204) return null;
     return res.json();
@@ -108,7 +109,7 @@
       .map((it) => {
         const g = it.gizmo?.gizmo || it.gizmo || it;
         const id = g.id || it.id;
-        const title = g.display?.name || g.title || g.name || '(未命名项目)';
+        const title = g.display?.name || g.title || g.name || t('unnamedProject');
         return id ? { id, title } : null;
       })
       .filter(Boolean);

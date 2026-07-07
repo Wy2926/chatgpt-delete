@@ -1,0 +1,8 @@
+{
+  "appName": {
+    "message": "ChatGPT Bulk Manager"
+  },
+  "appDesc": {
+    "message": "Bulk delete / archive ChatGPT conversations with multi-select, box-select, rate-limit handling and retry"
+  }
+}

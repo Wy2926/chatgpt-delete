@@ -1,0 +1,8 @@
+{
+  "appName": {
+    "message": "Gestionnaire en masse ChatGPT"
+  },
+  "appDesc": {
+    "message": "Supprimez / archivez en masse les conversations ChatGPT : sélection multiple, sélection par cadre, gestion des limites de débit et réessais"
+  }
+}
