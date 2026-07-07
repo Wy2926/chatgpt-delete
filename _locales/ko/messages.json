@@ -1,0 +1,8 @@
+{
+  "appName": {
+    "message": "ChatGPT 일괄 관리자"
+  },
+  "appDesc": {
+    "message": "ChatGPT 대화를 일괄 삭제 / 보관. 다중 선택, 박스 선택, 속도 제한 처리 및 재시도 지원"
+  }
+}

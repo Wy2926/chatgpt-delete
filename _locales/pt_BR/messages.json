@@ -1,0 +1,8 @@
+{
+  "appName": {
+    "message": "Gerenciador em massa do ChatGPT"
+  },
+  "appDesc": {
+    "message": "Exclua / arquive conversas do ChatGPT em massa, com seleção múltipla, seleção em caixa, tratamento de limite de taxa e novas tentativas"
+  }
+}

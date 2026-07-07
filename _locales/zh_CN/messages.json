@@ -1,0 +1,8 @@
+{
+  "appName": {
+    "message": "ChatGPT 批量管理器"
+  },
+  "appDesc": {
+    "message": "批量删除 / 归档 ChatGPT 会话，支持多选、框选、限速重试"
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "appName": {
+    "message": "ChatGPT Massen-Manager"
+  },
+  "appDesc": {
+    "message": "ChatGPT-Unterhaltungen massenweise löschen / archivieren, mit Mehrfachauswahl, Rahmenauswahl, Ratenlimit-Behandlung und Wiederholung"
+  }
+}

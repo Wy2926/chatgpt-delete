@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html>
 <head>
   <meta charset="UTF-8" />
   <style>
@@ -12,10 +12,10 @@
   </style>
 </head>
 <body>
-  <h1>ChatGPT 批量管理器</h1>
-  <p>批量删除 / 归档 ChatGPT 会话。支持多选、Shift 区间选、拖动框选，自动处理接口限速并支持失败重试。</p>
-  <button id="open">打开 ChatGPT 并使用</button>
-  <p class="tip">在 chatgpt.com 页面右下角点击 🗂 悬浮按钮即可打开管理面板。</p>
+  <h1 id="title"></h1>
+  <p id="desc"></p>
+  <button id="open"></button>
+  <p class="tip" id="tip"></p>
   <script src="popup.js"></script>
 </body>
 </html>

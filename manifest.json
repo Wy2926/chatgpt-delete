@@ -1,11 +1,12 @@
 {
   "manifest_version": 3,
-  "name": "ChatGPT 批量管理器",
-  "description": "批量删除 / 归档 ChatGPT 会话，支持多选、框选、限速重试",
-  "version": "1.0.0",
+  "name": "__MSG_appName__",
+  "description": "__MSG_appDesc__",
+  "default_locale": "en",
+  "version": "1.1.0",
   "action": {
     "default_popup": "popup/popup.html",
-    "default_title": "ChatGPT 批量管理器"
+    "default_title": "__MSG_appName__"
   },
   "icons": {
     "16": "icons/icon16.png",
@@ -15,7 +16,7 @@
   "content_scripts": [
     {
       "matches": ["https://chatgpt.com/*", "https://chat.openai.com/*"],
-      "js": ["src/icons.js", "src/api.js", "src/queue.js", "src/panel.js", "src/sidebar.js", "src/content.js"],
+      "js": ["src/i18n.js", "src/icons.js", "src/api.js", "src/queue.js", "src/panel.js", "src/sidebar.js", "src/content.js"],
       "run_at": "document_idle"
     }
   ]

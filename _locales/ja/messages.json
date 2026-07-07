@@ -1,0 +1,8 @@
+{
+  "appName": {
+    "message": "ChatGPT 一括マネージャー"
+  },
+  "appDesc": {
+    "message": "ChatGPT の会話を一括削除 / アーカイブ。複数選択・矩形選択・レート制限対応・再試行をサポート"
+  }
+}

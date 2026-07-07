@@ -9,6 +9,7 @@
 
   const B = (window.CGPTBulk = window.CGPTBulk || {});
   const I = B.ICONS;
+  const t = (k, p) => (B.t ? B.t(k, p) : k);
 
   const CSS = `
     :host { all: initial; }
@@ -174,7 +175,7 @@
 
       this.fab = document.createElement('button');
       this.fab.className = 'fab';
-      this.fab.title = '批量管理 ChatGPT 会话';
+      this.fab.title = t('fabTitle');
       this.fab.innerHTML = I.logo;
       this.fab.addEventListener('click', () => this.open());
       root.appendChild(this.fab);
@@ -185,33 +186,33 @@
       this.overlay.innerHTML = `
         <div class="panel">
           <div class="hd">
-            <h2><span class="logo">${I.logo}</span>会话批量管理</h2>
+            <h2><span class="logo">${I.logo}</span>${esc(t('panelTitle'))}</h2>
             <div class="tabs">
-              <button class="tab active" data-tab="active">会话</button>
-              <button class="tab" data-tab="projects">项目</button>
-              <button class="tab" data-tab="archived">已归档</button>
+              <button class="tab active" data-tab="active">${esc(t('tabActive'))}</button>
+              <button class="tab" data-tab="projects">${esc(t('tabProjects'))}</button>
+              <button class="tab" data-tab="archived">${esc(t('tabArchived'))}</button>
             </div>
-            <button class="iconbtn min" title="最小化">${I.minimize}</button>
-            <button class="iconbtn close" title="关闭">${I.close}</button>
+            <button class="iconbtn min" title="${esc(t('minimize'))}">${I.minimize}</button>
+            <button class="iconbtn close" title="${esc(t('close'))}">${I.close}</button>
           </div>
           <div class="toolbar">
-            <input class="search" placeholder="搜索会话标题…" />
-            <button class="btn" data-act="refresh">${I.refresh}刷新</button>
-            <button class="btn" data-act="selectAll">全选</button>
-            <button class="btn" data-act="invert">反选</button>
-            <button class="btn" data-act="clear">清除选择</button>
+            <input class="search" placeholder="${esc(t('searchPh'))}" />
+            <button class="btn" data-act="refresh">${I.refresh}${esc(t('refresh'))}</button>
+            <button class="btn" data-act="selectAll">${esc(t('selectAll'))}</button>
+            <button class="btn" data-act="invert">${esc(t('invert'))}</button>
+            <button class="btn" data-act="clear">${esc(t('clearSel'))}</button>
           </div>
-          <div class="hint">点击选择 / 取消；Shift+点击区间选择；在空白处按住鼠标拖动可框选。运行中可最小化，操作在后台继续。</div>
+          <div class="hint">${esc(t('hint'))}</div>
           <div class="list"></div>
           <div class="ft">
             <div class="progress"><div></div></div>
             <div class="ft-row">
-              <span class="status">加载中…</span>
-              <button class="btn" data-act="retryFailed" style="display:none">${I.retry}重试失败项</button>
-              <button class="btn" data-act="pause" style="display:none">${I.pause}暂停</button>
-              <button class="btn" data-act="cancel" style="display:none">${I.stop}取消</button>
-              <button class="btn primary" data-act="archive">${I.archive}归档所选</button>
-              <button class="btn danger" data-act="delete">${I.trash}删除所选</button>
+              <span class="status">${esc(t('loading'))}</span>
+              <button class="btn" data-act="retryFailed" style="display:none">${I.retry}${esc(t('retryFailed'))}</button>
+              <button class="btn" data-act="pause" style="display:none">${I.pause}${esc(t('pause'))}</button>
+              <button class="btn" data-act="cancel" style="display:none">${I.stop}${esc(t('cancel'))}</button>
+              <button class="btn primary" data-act="archive">${I.archive}${esc(t('archiveSel'))}</button>
+              <button class="btn danger" data-act="delete">${I.trash}${esc(t('deleteSel'))}</button>
             </div>
           </div>
         </div>`;
@@ -220,13 +221,13 @@
       // 迷你进度胶囊
       this.pill = document.createElement('div');
       this.pill.className = 'pill';
-      this.pill.title = '点击恢复面板';
+      this.pill.title = t('pillTitle');
       this.pill.innerHTML = `
         <div class="ring"><span class="ic">${I.logo}</span></div>
-        <div class="txt"><span class="t1">处理中…</span><small class="t2"></small></div>
+        <div class="txt"><span class="t1">${esc(t('processing'))}</span><small class="t2"></small></div>
         <div class="pctl">
-          <button class="p-pause" title="暂停/继续">${I.pause}</button>
-          <button class="p-cancel" title="取消">${I.stop}</button>
+          <button class="p-pause" title="${esc(t('pillPauseTitle'))}">${I.pause}</button>
+          <button class="p-cancel" title="${esc(t('cancel'))}">${I.stop}</button>
         </div>`;
       this.pill.addEventListener('click', (e) => {
         if (e.target.closest('.pctl')) return;
@@ -326,13 +327,13 @@
       if (failCount > 0) {
         this.pill.classList.add('done-warn');
         ring.querySelector('.ic').innerHTML = I.warn;
-        this.pill.querySelector('.t1').textContent = `完成 ${okCount}，失败 ${failCount}`;
-        this.pill.querySelector('.t2').textContent = '点击查看详情并重试';
+        this.pill.querySelector('.t1').textContent = t('doneFailPill', { ok: okCount, fail: failCount });
+        this.pill.querySelector('.t2').textContent = t('clickRetry');
       } else {
         this.pill.classList.add('done-ok');
         ring.querySelector('.ic').innerHTML = I.check;
-        this.pill.querySelector('.t1').textContent = `全部完成（${okCount}）`;
-        this.pill.querySelector('.t2').textContent = '点击查看';
+        this.pill.querySelector('.t1').textContent = t('allDonePill', { n: okCount });
+        this.pill.querySelector('.t2').textContent = t('clickView');
       }
     }
 
@@ -342,7 +343,7 @@
       this.overlay.querySelectorAll('.tab').forEach((t) =>
         t.classList.toggle('active', t.dataset.tab === tab));
       const arc = this.$('[data-act=archive], [data-act=unarchive]');
-      arc.innerHTML = tab === 'archived' ? `${I.unarchive}取消归档所选` : `${I.archive}归档所选`;
+      arc.innerHTML = tab === 'archived' ? `${I.unarchive}${esc(t('unarchiveSel'))}` : `${I.archive}${esc(t('archiveSel'))}`;
       arc.dataset.act = tab === 'archived' ? 'unarchive' : 'archive';
       this.refresh();
     }
@@ -354,22 +355,22 @@
       this.$('[data-act=retryFailed]').style.display = 'none';
       this.items = [];
       this.renderList();
-      this.setStatus('加载会话列表…');
+      this.setStatus(t('loadingList'));
       this.loading = true;
       this.groups = [];
       this.renderList();
       try {
         if (this.tab === 'projects') {
           this.items = await this._loadProjectItems();
-          this.setStatus(`共 ${this.groups.length} 个项目、${this.items.length} 个项目会话`);
+          this.setStatus(t('totalProjects', { p: this.groups.length, n: this.items.length }));
         } else {
           this.items = await B.fetchAllConversations(this.tab === 'archived', (n, total) => {
-            this.setStatus(`加载会话列表… ${n}/${total}`);
+            this.setStatus(`${t('loadingList')} ${n}/${total}`);
           });
-          this.setStatus(`共 ${this.items.length} 个会话`);
+          this.setStatus(t('totalConvs', { n: this.items.length }));
         }
       } catch (err) {
-        this.setStatus(`加载失败：${err.message}`, true);
+        this.setStatus(t('loadFailed', { msg: err.message }), true);
       }
       this.loading = false;
       this.renderList();
@@ -382,7 +383,7 @@
       const items = [];
       for (let i = 0; i < projects.length; i++) {
         const p = projects[i];
-        this.setStatus(`加载项目会话… ${i + 1}/${projects.length}（${p.title}）`);
+        this.setStatus(t('loadingProj', { i: i + 1, n: projects.length, t: p.title }));
         const convs = await B.fetchProjectConversations(p.id);
         convs.forEach((c) => items.push({ ...c, group: p.title, groupId: p.id }));
       }
@@ -406,7 +407,7 @@
       }
       return `<div class="row ${sel ? 'selected' : ''}" data-id="${esc(it.id)}" data-i="${i}">
         <input type="checkbox" ${sel ? 'checked' : ''} tabindex="-1" />
-        <span class="title" title="${esc(it.title)}">${esc(it.title || '(无标题)')}</span>
+        <span class="title" title="${esc(it.title)}">${esc(it.title || t('untitled'))}</span>
         <span class="time">${fmtTime(it.update_time)}</span>
         ${stHtml}
       </div>`;
@@ -414,7 +415,7 @@
 
     renderList() {
       if (this.loading) {
-        this.listEl.innerHTML = '<div class="empty">加载中…</div>';
+        this.listEl.innerHTML = `<div class="empty">${esc(t('loading'))}</div>`;
         return;
       }
       const items = this.visibleItems();
@@ -422,27 +423,27 @@
 
       if (this.tab === 'projects') {
         if ((this.groups || []).length === 0) {
-          this.listEl.innerHTML = '<div class="empty">没有项目</div>';
+          this.listEl.innerHTML = `<div class="empty">${esc(t('noProjects'))}</div>`;
           return;
         }
         const idx = new Map(items.map((it, i) => [it.id, i]));
         this.groups.forEach((p) => {
           const rows = items.filter((it) => it.groupId === p.id);
-          html.push(`<div class="group-hd" data-group="${esc(p.id)}" title="点击全选/取消全选本项目">
+          html.push(`<div class="group-hd" data-group="${esc(p.id)}" title="${esc(t('groupTitle'))}">
             ${I.folder}<span>${esc(p.title)}</span>
             <span class="gcnt">(${rows.length})</span>
-            <span class="gsel">全选/取消</span>
-            <button class="gdel" data-gdel="${esc(p.id)}" title="删除整个项目">${I.trash}删除项目</button>
+            <span class="gsel">${esc(t('groupSel'))}</span>
+            <button class="gdel" data-gdel="${esc(p.id)}" title="${esc(t('delProjectTitle'))}">${I.trash}${esc(t('delProject'))}</button>
           </div>`);
           if (rows.length === 0) {
-            html.push('<div class="group-empty">（空项目）</div>');
+            html.push(`<div class="group-empty">${esc(t('emptyProject'))}</div>`);
           } else {
             rows.forEach((it) => html.push(this._rowHtml(it, idx.get(it.id))));
           }
         });
       } else {
         if (items.length === 0) {
-          this.listEl.innerHTML = '<div class="empty">没有会话</div>';
+          this.listEl.innerHTML = `<div class="empty">${esc(t('noConvs'))}</div>`;
           return;
         }
         items.forEach((it, i) => html.push(this._rowHtml(it, i)));
@@ -469,8 +470,8 @@
       const p = (this.groups || []).find((g) => g.id === groupId);
       if (!p) return;
       const n = this.items.filter((it) => it.groupId === groupId).length;
-      if (!window.confirm(`确认删除项目「${p.title}」？项目内的 ${n} 个会话将一并删除，无法恢复。`)) return;
-      this.setStatus(`删除项目「${p.title}」…`);
+      if (!window.confirm(t('confirmDelProject', { t: p.title, n }))) return;
+      this.setStatus(t('deletingProject', { t: p.title }));
       try {
         await B.deleteProject(groupId);
         const removedIds = this.items.filter((it) => it.groupId === groupId).map((it) => it.id);
@@ -478,9 +479,9 @@
         this.items = this.items.filter((it) => it.groupId !== groupId);
         removedIds.forEach((id) => this.selected.delete(id));
         if (removedIds.length > 0 && B.sidebarSync) B.sidebarSync(removedIds);
-        this.setStatus(`项目「${p.title}」已删除`);
+        this.setStatus(t('projectDeleted', { t: p.title }));
       } catch (err) {
-        this.setStatus(`删除项目失败：${err.message}`, true);
+        this.setStatus(t('delProjectFailed', { msg: err.message }), true);
       }
       this.renderList();
     }
@@ -514,8 +515,8 @@
     _updateCount() {
       if (!this.running) {
         this.setStatus(this.selected.size > 0
-          ? `已选择 ${this.selected.size} / ${this.items.length} 个会话`
-          : `共 ${this.items.length} 个会话`);
+          ? t('selectedCount', { sel: this.selected.size, total: this.items.length })
+          : t('totalConvs', { n: this.items.length }));
       }
     }
 
@@ -639,11 +640,11 @@
       const pbtn = this.pill.querySelector('.p-pause');
       if (this.queue.paused) {
         this.queue.resume();
-        btn.innerHTML = `${I.pause}暂停`;
+        btn.innerHTML = `${I.pause}${esc(t('pause'))}`;
         pbtn.innerHTML = I.pause;
       } else {
         this.queue.pause();
-        btn.innerHTML = `${I.play}继续`;
+        btn.innerHTML = `${I.play}${esc(t('resume'))}`;
         pbtn.innerHTML = I.play;
       }
     }
@@ -669,17 +670,17 @@
     _confirmAndRun(action) {
       if (this.running || this.selected.size === 0) return;
       const n = this.selected.size;
-      const verbs = { delete: '删除', archive: '归档', unarchive: '取消归档' };
-      const extra = action === 'delete' ? '删除后无法恢复。' : '';
+      const verbs = { delete: t('verbDelete'), archive: t('verbArchive'), unarchive: t('verbUnarchive') };
+      const extra = action === 'delete' ? t('irreversible') : '';
       const mask = document.createElement('div');
       mask.className = 'confirm-mask';
       mask.innerHTML = `
         <div class="confirm">
-          <h3>确认${verbs[action]}</h3>
-          <p>将对 <b>${n}</b> 个会话执行「${verbs[action]}」。${extra}操作会在后台执行，期间可最小化本面板。</p>
+          <h3>${esc(t('confirmTitle', { verb: verbs[action] }))}</h3>
+          <p>${esc(t('confirmBody', { verb: verbs[action], n, extra }))}</p>
           <div class="acts">
-            <button class="btn" data-c="no">取消</button>
-            <button class="btn ${action === 'delete' ? 'danger' : 'primary'}" data-c="yes">确认${verbs[action]}</button>
+            <button class="btn" data-c="no">${esc(t('cancel'))}</button>
+            <button class="btn ${action === 'delete' ? 'danger' : 'primary'}" data-c="yes">${esc(t('confirmBtn', { verb: verbs[action] }))}</button>
           </div>
         </div>`;
       this.$('.panel').appendChild(mask);
@@ -699,7 +700,7 @@
         archive: B.archiveConversation,
         unarchive: B.unarchiveConversation,
       };
-      const verbs = { delete: '删除', archive: '归档', unarchive: '取消归档' };
+      const verbs = { delete: t('verbDelete'), archive: t('verbArchive'), unarchive: t('verbUnarchive') };
       const fn = fns[action];
       this.lastAction = action;
       this.running = true;
@@ -710,45 +711,45 @@
       let finished = 0;
       const tick = (note) => {
         this.progressBar.style.width = `${Math.round((finished / total) * 100)}%`;
-        this.setStatus(`${verbs[action]}中… ${finished}/${total}`);
-        this._updatePill(finished, total, note || `${verbs[action]}中`);
+        this.setStatus(t('working', { verb: verbs[action], done: finished, total }));
+        this._updatePill(finished, total, note || t('working', { verb: verbs[action], done: finished, total }));
       };
       tick();
 
       this.queue = new B.TaskQueue();
       const tasks = ids.map((id) => ({ id, run: () => fn(id) }));
       const result = await this.queue.run(tasks, {
-        onItemStart: (t) => {
-          this.itemStatus.set(t.id, { state: 'doing', label: '处理中' });
-          this._patchRowStatus(t.id);
+        onItemStart: (task) => {
+          this.itemStatus.set(task.id, { state: 'doing', label: t('itemDoing') });
+          this._patchRowStatus(task.id);
         },
-        onItemDone: (t) => {
+        onItemDone: (task) => {
           finished++;
-          this.itemStatus.set(t.id, { state: 'ok', label: '✓ 完成' });
-          this.selected.delete(t.id);
-          this._patchRowStatus(t.id);
+          this.itemStatus.set(task.id, { state: 'ok', label: t('itemOk') });
+          this.selected.delete(task.id);
+          this._patchRowStatus(task.id);
           // 侧边栏实时同步：每完成一条立即隐藏对应行
-          if (action !== 'unarchive' && B.sidebarSync) B.sidebarSync([t.id]);
+          if (action !== 'unarchive' && B.sidebarSync) B.sidebarSync([task.id]);
           tick();
         },
-        onItemError: (t, err, willRetry) => {
+        onItemError: (task, err, willRetry) => {
           if (!willRetry) {
             finished++;
-            this.itemStatus.set(t.id, { state: 'err', label: '✗ 失败', msg: err.message });
-            this._patchRowStatus(t.id);
+            this.itemStatus.set(task.id, { state: 'err', label: t('itemFail'), msg: err.message });
+            this._patchRowStatus(task.id);
             tick();
           }
         },
-        onItemRetryWait: (t, waitMs, attempt) => {
-          this.itemStatus.set(t.id, {
+        onItemRetryWait: (task, waitMs, attempt) => {
+          const s = Math.ceil(waitMs / 1000);
+          this.itemStatus.set(task.id, {
             state: 'doing',
-            label: `重试${attempt}`,
-            msg: `${Math.ceil(waitMs / 1000)}s 后重试`,
+            label: t('retryN', { n: attempt }),
+            msg: t('retryIn', { s }),
           });
-          this._patchRowStatus(t.id);
-          const note = `限速中，${Math.ceil(waitMs / 1000)}s 后重试`;
-          this.setStatus(`遇到限速，${Math.ceil(waitMs / 1000)} 秒后自动重试… (${finished}/${total})`);
-          this._updatePill(finished, total, note);
+          this._patchRowStatus(task.id);
+          this.setStatus(t('rlLong', { s, done: finished, total }));
+          this._updatePill(finished, total, t('rlNote', { s }));
         },
       });
 
@@ -758,13 +759,13 @@
       this.failedIds = result.failed.map((f) => f.id);
 
       if (result.aborted) {
-        this.setStatus(`已取消：完成 ${result.done.length}，未处理 ${total - result.done.length - result.failed.length}`, false);
+        this.setStatus(t('cancelled', { done: result.done.length, left: total - result.done.length - result.failed.length }), false);
       } else if (result.failed.length > 0) {
         const firstErr = result.failed[0].error;
-        this.setStatus(`完成 ${result.done.length}，失败 ${result.failed.length}（${firstErr ? firstErr.message : '未知错误'}）`, true);
+        this.setStatus(t('doneWithFail', { ok: result.done.length, fail: result.failed.length, msg: firstErr ? firstErr.message : '' }), true);
         this.$('[data-act=retryFailed]').style.display = '';
       } else {
-        this.setStatus(`全部${verbs[action]}成功（共 ${result.done.length} 个）`);
+        this.setStatus(t('allSuccess', { verb: verbs[action], n: result.done.length }));
       }
 
       if (this.minimized) {
@@ -795,7 +796,7 @@
 
     _setRunningUi(running) {
       this.$('[data-act=pause]').style.display = running ? '' : 'none';
-      this.$('[data-act=pause]').innerHTML = `${I.pause}暂停`;
+      this.$('[data-act=pause]').innerHTML = `${I.pause}${esc(t('pause'))}`;
       this.pill.querySelector('.p-pause').innerHTML = I.pause;
       this.$('[data-act=cancel]').style.display = running ? '' : 'none';
       this.$('[data-act=refresh]').disabled = running;
