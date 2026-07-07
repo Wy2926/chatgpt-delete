@@ -31,8 +31,6 @@
     .hl { position: fixed; border-radius: 8px; background: rgba(16,163,127,.18); }
     .hl.hit { background: rgba(16,163,127,.28); outline: 1px dashed #10a37f; outline-offset: -1px; }
     .hl.err { background: rgba(229,72,77,.18); outline: 1px solid rgba(229,72,77,.8); outline-offset: -1px; }
-    .hl.gone { background: rgba(120,120,120,.5); display: flex; align-items: center; justify-content: center;
-      color: #fff; font-size: 12px; }
     .cb {
       position: fixed; width: 15px; height: 15px; border-radius: 4px;
       border: 1.5px solid #9aa; background: #fff; display: flex; align-items: center; justify-content: center;
@@ -83,6 +81,7 @@
       this._startTracking();
       B.sidebarSync = (ids) => {
         ids.forEach((id) => this.hidden.add(id));
+        this._applyHidden();
         this._scheduleUpdate();
       };
     }
@@ -120,7 +119,27 @@
         : `${I.lasso}<span>批量选择</span>`;
     }
 
-    _nav() { return document.querySelector('nav'); }
+    /**
+     * 定位侧边栏容器：优先包含会话链接的 nav；否则回退到
+     * 会话链接的最近可滚动祖先（兼容 ChatGPT DOM 结构变化）。
+     */
+    _nav() {
+      for (const nav of document.querySelectorAll('nav')) {
+        if (nav.querySelector('a[href*="/c/"]')) return nav;
+      }
+      const link = document.querySelector('aside a[href*="/c/"], a[href*="/c/"]');
+      if (!link) return document.querySelector('nav');
+      let el = link.parentElement;
+      while (el && el !== document.body) {
+        const s = getComputedStyle(el);
+        if ((s.overflowY === 'auto' || s.overflowY === 'scroll') &&
+            el.getBoundingClientRect().width < window.innerWidth * 0.6) {
+          return el;
+        }
+        el = el.parentElement;
+      }
+      return link.closest('aside') || document.querySelector('nav');
+    }
 
     _links() {
       const nav = this._nav();
@@ -128,6 +147,22 @@
       return [...nav.querySelectorAll('a[href*="/c/"]')].filter((a) => {
         const id = convIdFromHref(a.getAttribute('href'));
         return id && !this.hidden.has(id);
+      });
+    }
+
+    /**
+     * 对已删除/已归档成功的行设置 display:none（仅改样式属性、不增删节点，
+     * hydration 完成后安全），行立即从侧边栏消失，无需刷新页面。
+     * React 重渲染可能重建节点，故在每次覆盖层更新时重新应用。
+     */
+    _applyHidden() {
+      if (this.hidden.size === 0) return;
+      document.querySelectorAll('a[href*="/c/"]').forEach((a) => {
+        const id = convIdFromHref(a.getAttribute('href'));
+        if (id && this.hidden.has(id)) {
+          const row = a.closest('li') || a;
+          if (row.style.display !== 'none') row.style.setProperty('display', 'none', 'important');
+        }
       });
     }
 
@@ -164,6 +199,7 @@
     }
 
     _update() {
+      this._applyHidden();
       const nav = this._nav();
       // 开关按钮：悬浮在侧边栏顶部
       if (nav) {
@@ -194,16 +230,7 @@
         if (!id) return;
         const r = a.getBoundingClientRect();
         if (r.bottom < navRect.top || r.top > navRect.bottom || r.height === 0) return;
-        if (this.hidden.has(id)) {
-          const hl = document.createElement('div');
-          hl.className = 'hl gone';
-          Object.assign(hl.style, {
-            left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px`,
-          });
-          hl.textContent = '已处理';
-          frag.appendChild(hl);
-          return;
-        }
+        if (this.hidden.has(id)) return;
         const sel = this.selected.has(id);
         const err = this.errors.has(id);
         if (sel || err || this.hitIds.has(id)) {
@@ -373,6 +400,7 @@
           finished++;
           this.selected.delete(t.id);
           this.hidden.add(t.id);
+          this._applyHidden();
           this._setProgress(`${verbs[action]}中… ${finished}/${total}`);
           this._scheduleUpdate();
         },
