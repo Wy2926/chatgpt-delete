@@ -18,13 +18,10 @@
 
   const mount = () => {
     const panel = new window.CGPTBulk.Panel();
-    const sidebar = new window.CGPTBulk.SidebarSelect();
+    new window.CGPTBulk.SidebarSync();
     // React 若重建页面（如客户端全量重渲染）会清掉外部节点，定期检查并重挂
     setInterval(() => {
-      if (document.body) {
-        if (!panel.host.isConnected) document.body.appendChild(panel.host);
-        if (!sidebar.host.isConnected) document.body.appendChild(sidebar.host);
-      }
+      if (document.body && !panel.host.isConnected) document.body.appendChild(panel.host);
     }, 2000);
   };
 

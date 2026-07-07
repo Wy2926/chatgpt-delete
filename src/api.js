@@ -128,6 +128,11 @@
     return items;
   }
 
+  /** 删除项目（gizmo） */
+  function deleteProject(gizmoId) {
+    return apiFetch(`/gizmos/${gizmoId}`, { method: 'DELETE' });
+  }
+
   function deleteConversation(id) {
     return apiFetch(`/conversation/${id}`, {
       method: 'PATCH',
@@ -157,6 +162,7 @@
     fetchAllConversations,
     fetchProjects,
     fetchProjectConversations,
+    deleteProject,
     deleteConversation,
     archiveConversation,
     unarchiveConversation,

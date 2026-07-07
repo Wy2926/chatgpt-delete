@@ -90,6 +90,10 @@
     .group-hd svg { font-size: 13px; }
     .group-hd .gcnt { color: #7aa; font-weight: 400; }
     .group-hd .gsel { margin-left: auto; font-weight: 400; font-size: 12px; color: #10a37f; }
+    .group-hd .gdel { border: none; background: none; cursor: pointer; color: #c33; font-size: 12px;
+      display: inline-flex; align-items: center; gap: 4px; padding: 2px 6px; border-radius: 6px; }
+    .group-hd .gdel:hover { background: rgba(229,72,77,.12); }
+    .group-empty { padding: 8px 18px 10px 40px; color: #aaa; font-size: 12px; border-bottom: 1px solid #f6f6f6; }
 
     .ft { padding: 12px 18px; border-top: 1px solid #eee; display: flex; flex-direction: column; gap: 8px; }
     .ft-row { display: flex; gap: 8px; align-items: center; }
@@ -155,6 +159,8 @@
       this.queue = null;
       this.lastClickedIndex = -1;
       this.filter = '';
+      this.loading = false;
+      this.groups = [];              // 项目 tab 的项目列表 [{id,title}]
       this._buildDom();
     }
 
@@ -349,10 +355,13 @@
       this.items = [];
       this.renderList();
       this.setStatus('加载会话列表…');
+      this.loading = true;
+      this.groups = [];
+      this.renderList();
       try {
         if (this.tab === 'projects') {
           this.items = await this._loadProjectItems();
-          this.setStatus(`共 ${this.items.length} 个项目会话`);
+          this.setStatus(`共 ${this.groups.length} 个项目、${this.items.length} 个项目会话`);
         } else {
           this.items = await B.fetchAllConversations(this.tab === 'archived', (n, total) => {
             this.setStatus(`加载会话列表… ${n}/${total}`);
@@ -362,16 +371,14 @@
       } catch (err) {
         this.setStatus(`加载失败：${err.message}`, true);
       }
+      this.loading = false;
       this.renderList();
     }
 
-    /** 项目 tab：拉取项目列表及各项目下会话，按项目分组 */
+    /** 项目 tab：拉取项目列表及各项目下会话，按项目分组（空项目也保留） */
     async _loadProjectItems() {
       const projects = await B.fetchProjects();
-      if (projects.length === 0) {
-        this.setStatus('没有项目');
-        return [];
-      }
+      this.groups = projects;
       const items = [];
       for (let i = 0; i < projects.length; i++) {
         const p = projects[i];
@@ -389,50 +396,93 @@
       return this.items.filter((it) => (it.title || '').toLowerCase().includes(this.filter));
     }
 
+    _rowHtml(it, i) {
+      const sel = this.selected.has(it.id);
+      const st = this.itemStatus.get(it.id);
+      let stHtml = '';
+      if (st) {
+        const cls = st.state === 'ok' ? 'ok' : st.state === 'err' ? 'err' : 'doing';
+        stHtml = `<span class="st ${cls}" title="${esc(st.msg || '')}">${esc(st.label)}</span>`;
+      }
+      return `<div class="row ${sel ? 'selected' : ''}" data-id="${esc(it.id)}" data-i="${i}">
+        <input type="checkbox" ${sel ? 'checked' : ''} tabindex="-1" />
+        <span class="title" title="${esc(it.title)}">${esc(it.title || '(无标题)')}</span>
+        <span class="time">${fmtTime(it.update_time)}</span>
+        ${stHtml}
+      </div>`;
+    }
+
     renderList() {
-      const items = this.visibleItems();
-      if (items.length === 0) {
-        this.listEl.innerHTML = '<div class="empty">没有会话</div>';
+      if (this.loading) {
+        this.listEl.innerHTML = '<div class="empty">加载中…</div>';
         return;
       }
-      const groupCounts = new Map();
-      items.forEach((it) => {
-        if (it.groupId) groupCounts.set(it.groupId, (groupCounts.get(it.groupId) || 0) + 1);
-      });
-      let prevGroup;
+      const items = this.visibleItems();
       const html = [];
-      items.forEach((it, i) => {
-        if (it.groupId && it.groupId !== prevGroup) {
-          prevGroup = it.groupId;
-          html.push(`<div class="group-hd" data-group="${esc(it.groupId)}" title="点击全选/取消全选本项目">
-            ${I.folder}<span>${esc(it.group)}</span>
-            <span class="gcnt">(${groupCounts.get(it.groupId)})</span>
-            <span class="gsel">全选/取消</span>
-          </div>`);
-        }
-        const sel = this.selected.has(it.id);
-        const st = this.itemStatus.get(it.id);
-        let stHtml = '';
-        if (st) {
-          const cls = st.state === 'ok' ? 'ok' : st.state === 'err' ? 'err' : 'doing';
-          stHtml = `<span class="st ${cls}" title="${esc(st.msg || '')}">${esc(st.label)}</span>`;
-        }
-        html.push(`<div class="row ${sel ? 'selected' : ''}" data-id="${esc(it.id)}" data-i="${i}">
-          <input type="checkbox" ${sel ? 'checked' : ''} tabindex="-1" />
-          <span class="title" title="${esc(it.title)}">${esc(it.title || '(无标题)')}</span>
-          <span class="time">${fmtTime(it.update_time)}</span>
-          ${stHtml}
-        </div>`);
-      });
-      this.listEl.innerHTML = html.join('');
 
+      if (this.tab === 'projects') {
+        if ((this.groups || []).length === 0) {
+          this.listEl.innerHTML = '<div class="empty">没有项目</div>';
+          return;
+        }
+        const idx = new Map(items.map((it, i) => [it.id, i]));
+        this.groups.forEach((p) => {
+          const rows = items.filter((it) => it.groupId === p.id);
+          html.push(`<div class="group-hd" data-group="${esc(p.id)}" title="点击全选/取消全选本项目">
+            ${I.folder}<span>${esc(p.title)}</span>
+            <span class="gcnt">(${rows.length})</span>
+            <span class="gsel">全选/取消</span>
+            <button class="gdel" data-gdel="${esc(p.id)}" title="删除整个项目">${I.trash}删除项目</button>
+          </div>`);
+          if (rows.length === 0) {
+            html.push('<div class="group-empty">（空项目）</div>');
+          } else {
+            rows.forEach((it) => html.push(this._rowHtml(it, idx.get(it.id))));
+          }
+        });
+      } else {
+        if (items.length === 0) {
+          this.listEl.innerHTML = '<div class="empty">没有会话</div>';
+          return;
+        }
+        items.forEach((it, i) => html.push(this._rowHtml(it, i)));
+      }
+
+      this.listEl.innerHTML = html.join('');
       this.listEl.querySelectorAll('.row').forEach((row) => {
         row.addEventListener('click', (e) => this._onRowClick(row, e));
       });
       this.listEl.querySelectorAll('.group-hd').forEach((hd) => {
         hd.addEventListener('click', () => this._onGroupClick(hd.dataset.group));
       });
+      this.listEl.querySelectorAll('.gdel').forEach((btn) => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this._deleteProject(btn.dataset.gdel);
+        });
+      });
       this._updateActionButtons();
+    }
+
+    async _deleteProject(groupId) {
+      if (this.running) return;
+      const p = (this.groups || []).find((g) => g.id === groupId);
+      if (!p) return;
+      const n = this.items.filter((it) => it.groupId === groupId).length;
+      if (!window.confirm(`确认删除项目「${p.title}」？项目内的 ${n} 个会话将一并删除，无法恢复。`)) return;
+      this.setStatus(`删除项目「${p.title}」…`);
+      try {
+        await B.deleteProject(groupId);
+        const removedIds = this.items.filter((it) => it.groupId === groupId).map((it) => it.id);
+        this.groups = this.groups.filter((g) => g.id !== groupId);
+        this.items = this.items.filter((it) => it.groupId !== groupId);
+        removedIds.forEach((id) => this.selected.delete(id));
+        if (removedIds.length > 0 && B.sidebarSync) B.sidebarSync(removedIds);
+        this.setStatus(`项目「${p.title}」已删除`);
+      } catch (err) {
+        this.setStatus(`删除项目失败：${err.message}`, true);
+      }
+      this.renderList();
     }
 
     _onGroupClick(groupId) {
@@ -677,6 +727,8 @@
           this.itemStatus.set(t.id, { state: 'ok', label: '✓ 完成' });
           this.selected.delete(t.id);
           this._patchRowStatus(t.id);
+          // 侧边栏实时同步：每完成一条立即隐藏对应行
+          if (action !== 'unarchive' && B.sidebarSync) B.sidebarSync([t.id]);
           tick();
         },
         onItemError: (t, err, willRetry) => {
@@ -724,7 +776,6 @@
       const doneSet = new Set(result.done);
       this.items = this.items.filter((it) => !doneSet.has(it.id));
       this.renderList();
-      if (result.done.length > 0 && B.sidebarSync) B.sidebarSync(result.done, action);
     }
 
     _patchRowStatus(id) {
