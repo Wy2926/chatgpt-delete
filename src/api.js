@@ -94,6 +94,40 @@
     return items;
   }
 
+  /** 获取项目（gizmo）列表；接口不存在时返回空数组 */
+  async function fetchProjects() {
+    let data;
+    try {
+      data = await apiFetch('/gizmos/snorlax/sidebar?conversations_per_gizmo=0');
+    } catch (err) {
+      if (err.status === 404) return [];
+      throw err;
+    }
+    const items = data?.items || [];
+    return items
+      .map((it) => {
+        const g = it.gizmo?.gizmo || it.gizmo || it;
+        const id = g.id || it.id;
+        const title = g.display?.name || g.title || g.name || '(未命名项目)';
+        return id ? { id, title } : null;
+      })
+      .filter(Boolean);
+  }
+
+  /** 获取某项目下全部会话（cursor 翻页） */
+  async function fetchProjectConversations(gizmoId) {
+    const items = [];
+    let cursor = null;
+    for (let i = 0; i < 50; i++) {
+      const q = cursor != null ? `?cursor=${encodeURIComponent(cursor)}` : '';
+      const page = await apiFetch(`/gizmos/${gizmoId}/conversations${q}`);
+      items.push(...(page?.items || []));
+      cursor = page?.cursor ?? null;
+      if (cursor == null || !page?.items?.length) break;
+    }
+    return items;
+  }
+
   function deleteConversation(id) {
     return apiFetch(`/conversation/${id}`, {
       method: 'PATCH',
@@ -121,6 +155,8 @@
     getAccessToken,
     fetchConversations,
     fetchAllConversations,
+    fetchProjects,
+    fetchProjectConversations,
     deleteConversation,
     archiveConversation,
     unarchiveConversation,

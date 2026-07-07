@@ -81,6 +81,16 @@
 
     .empty { padding: 48px 0; text-align: center; color: #999; font-size: 14px; }
 
+    .group-hd {
+      display: flex; align-items: center; gap: 8px; padding: 8px 18px;
+      background: #f4f8f7; border-bottom: 1px solid #e8efec; cursor: pointer;
+      font-size: 12.5px; font-weight: 600; color: #0d6e57; position: sticky; top: 0; z-index: 2;
+    }
+    .group-hd:hover { background: #e9f3ef; }
+    .group-hd svg { font-size: 13px; }
+    .group-hd .gcnt { color: #7aa; font-weight: 400; }
+    .group-hd .gsel { margin-left: auto; font-weight: 400; font-size: 12px; color: #10a37f; }
+
     .ft { padding: 12px 18px; border-top: 1px solid #eee; display: flex; flex-direction: column; gap: 8px; }
     .ft-row { display: flex; gap: 8px; align-items: center; }
     .status { flex: 1; font-size: 13px; color: #555; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -134,7 +144,7 @@
 
   class Panel {
     constructor() {
-      this.tab = 'active';            // 'active' | 'archived'
+      this.tab = 'active';            // 'active' | 'projects' | 'archived'
       this.items = [];                // 当前 tab 的全部会话
       this.selected = new Set();      // 选中的会话 id
       this.itemStatus = new Map();    // id -> {state:'doing'|'ok'|'err', msg}
@@ -172,6 +182,7 @@
             <h2><span class="logo">${I.logo}</span>会话批量管理</h2>
             <div class="tabs">
               <button class="tab active" data-tab="active">会话</button>
+              <button class="tab" data-tab="projects">项目</button>
               <button class="tab" data-tab="archived">已归档</button>
             </div>
             <button class="iconbtn min" title="最小化">${I.minimize}</button>
@@ -339,14 +350,36 @@
       this.renderList();
       this.setStatus('加载会话列表…');
       try {
-        this.items = await B.fetchAllConversations(this.tab === 'archived', (n, total) => {
-          this.setStatus(`加载会话列表… ${n}/${total}`);
-        });
-        this.setStatus(`共 ${this.items.length} 个会话`);
+        if (this.tab === 'projects') {
+          this.items = await this._loadProjectItems();
+          this.setStatus(`共 ${this.items.length} 个项目会话`);
+        } else {
+          this.items = await B.fetchAllConversations(this.tab === 'archived', (n, total) => {
+            this.setStatus(`加载会话列表… ${n}/${total}`);
+          });
+          this.setStatus(`共 ${this.items.length} 个会话`);
+        }
       } catch (err) {
         this.setStatus(`加载失败：${err.message}`, true);
       }
       this.renderList();
+    }
+
+    /** 项目 tab：拉取项目列表及各项目下会话，按项目分组 */
+    async _loadProjectItems() {
+      const projects = await B.fetchProjects();
+      if (projects.length === 0) {
+        this.setStatus('没有项目');
+        return [];
+      }
+      const items = [];
+      for (let i = 0; i < projects.length; i++) {
+        const p = projects[i];
+        this.setStatus(`加载项目会话… ${i + 1}/${projects.length}（${p.title}）`);
+        const convs = await B.fetchProjectConversations(p.id);
+        convs.forEach((c) => items.push({ ...c, group: p.title, groupId: p.id }));
+      }
+      return items;
     }
 
     /* ---------- 渲染 ---------- */
@@ -362,7 +395,21 @@
         this.listEl.innerHTML = '<div class="empty">没有会话</div>';
         return;
       }
-      this.listEl.innerHTML = items.map((it, i) => {
+      const groupCounts = new Map();
+      items.forEach((it) => {
+        if (it.groupId) groupCounts.set(it.groupId, (groupCounts.get(it.groupId) || 0) + 1);
+      });
+      let prevGroup;
+      const html = [];
+      items.forEach((it, i) => {
+        if (it.groupId && it.groupId !== prevGroup) {
+          prevGroup = it.groupId;
+          html.push(`<div class="group-hd" data-group="${esc(it.groupId)}" title="点击全选/取消全选本项目">
+            ${I.folder}<span>${esc(it.group)}</span>
+            <span class="gcnt">(${groupCounts.get(it.groupId)})</span>
+            <span class="gsel">全选/取消</span>
+          </div>`);
+        }
         const sel = this.selected.has(it.id);
         const st = this.itemStatus.get(it.id);
         let stHtml = '';
@@ -370,18 +417,31 @@
           const cls = st.state === 'ok' ? 'ok' : st.state === 'err' ? 'err' : 'doing';
           stHtml = `<span class="st ${cls}" title="${esc(st.msg || '')}">${esc(st.label)}</span>`;
         }
-        return `<div class="row ${sel ? 'selected' : ''}" data-id="${esc(it.id)}" data-i="${i}">
+        html.push(`<div class="row ${sel ? 'selected' : ''}" data-id="${esc(it.id)}" data-i="${i}">
           <input type="checkbox" ${sel ? 'checked' : ''} tabindex="-1" />
           <span class="title" title="${esc(it.title)}">${esc(it.title || '(无标题)')}</span>
           <span class="time">${fmtTime(it.update_time)}</span>
           ${stHtml}
-        </div>`;
-      }).join('');
+        </div>`);
+      });
+      this.listEl.innerHTML = html.join('');
 
       this.listEl.querySelectorAll('.row').forEach((row) => {
         row.addEventListener('click', (e) => this._onRowClick(row, e));
       });
+      this.listEl.querySelectorAll('.group-hd').forEach((hd) => {
+        hd.addEventListener('click', () => this._onGroupClick(hd.dataset.group));
+      });
       this._updateActionButtons();
+    }
+
+    _onGroupClick(groupId) {
+      if (this.running) return;
+      const ids = this.visibleItems().filter((it) => it.groupId === groupId).map((it) => it.id);
+      const allSel = ids.length > 0 && ids.every((id) => this.selected.has(id));
+      ids.forEach((id) => (allSel ? this.selected.delete(id) : this.selected.add(id)));
+      this.renderList();
+      this._updateCount();
     }
 
     _onRowClick(row, e) {
