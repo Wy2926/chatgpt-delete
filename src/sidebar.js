@@ -120,25 +120,29 @@
     }
 
     /**
-     * 定位侧边栏容器：优先包含会话链接的 nav；否则回退到
-     * 会话链接的最近可滚动祖先（兼容 ChatGPT DOM 结构变化）。
+     * 定位侧边栏容器。新版 ChatGPT 侧边栏没有 nav/aside：聊天列表在
+     * `div#history` 内，项目会话链接为 `/g/g-p-…/c/<id>`。优先以 #history
+     * （或任意会话链接）向上找可滚动祖先；再回退到 nav/aside。
      */
     _nav() {
+      const probe = document.getElementById('history') || document.querySelector('a[href*="/c/"]');
+      if (probe) {
+        let el = probe.parentElement;
+        while (el && el !== document.body) {
+          const s = getComputedStyle(el);
+          if (/(auto|scroll|overlay)/.test(s.overflowY) && el.clientHeight > 150 &&
+              el.getBoundingClientRect().width < window.innerWidth * 0.6) {
+            return el;
+          }
+          el = el.parentElement;
+        }
+        const hist = document.getElementById('history');
+        if (hist) return hist.parentElement || hist;
+      }
       for (const nav of document.querySelectorAll('nav')) {
         if (nav.querySelector('a[href*="/c/"]')) return nav;
       }
-      const link = document.querySelector('aside a[href*="/c/"], a[href*="/c/"]');
-      if (!link) return document.querySelector('nav');
-      let el = link.parentElement;
-      while (el && el !== document.body) {
-        const s = getComputedStyle(el);
-        if ((s.overflowY === 'auto' || s.overflowY === 'scroll') &&
-            el.getBoundingClientRect().width < window.innerWidth * 0.6) {
-          return el;
-        }
-        el = el.parentElement;
-      }
-      return link.closest('aside') || document.querySelector('nav');
+      return document.querySelector('nav, aside');
     }
 
     _links() {
